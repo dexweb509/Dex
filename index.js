@@ -1,124 +1,100 @@
-// 📦 Importation des modules
+// 🔷 DEXBOT XMD - MULTI DEVICE PAIRING
 const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
 const { Telegraf, Markup } = require('telegraf');
+const fs = require('fs');
 const P = require('pino');
-const fs = require('fs-extra');
 const axios = require('axios');
 
-// 🔑 Token Telegram (rempli dans Codespaces ENV ou fichier config.js)
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || require('./config').TELEGRAM_TOKEN;
-const bot = new Telegraf(TELEGRAM_TOKEN);
+// 🧠 TOKEN TELEGRAM OU
+const bot = new Telegraf('VOTRE_TOKEN_TELEGRAM_ICI');
 
-// 🧠 AUTH WhatsApp
-const WA_SESS = './auth_info_multi';
+// 🔐 AUTHPATH POU BAILEYS
+const { state, saveCreds } = await useMultiFileAuthState('./session');
 
-// ⏳ Connexion WhatsApp via CODE DE JUMELAGE
-async function startWA() {
-  const { state, saveCreds } = await useMultiFileAuthState(WA_SESS);
+// 🌐 Lanse WhatsApp
+async function startWhatsapp() {
   const { version } = await fetchLatestBaileysVersion();
   const sock = makeWASocket({
     version,
     logger: P({ level: 'silent' }),
+    printQRInTerminal: true,
     auth: {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(state.keys, P({ level: 'silent' }))
     },
-    printQRInTerminal: false,
-    browser: ['DEXBOT XMD', 'Chrome', '10.0'],
+    browser: ['DEXBOT XMD', 'Chrome', '1.0']
   });
 
   sock.ev.on('creds.update', saveCreds);
 
-  sock.ev.on('connection.update', async (update) => {
-    const { connection, qr, pairingCode } = update;
-
-    if (connection === 'open') {
-      console.log('✅ WhatsApp connecté avec succès !');
-    }
-
-    if (connection === 'close') {
-      console.log('❌ Déconnecté. Tentative de reconnexion...');
-      startWA();
-    }
-
-    if (pairingCode) {
-      console.log(`📲 Code de jumelage : ${pairingCode}`);
-      await bot.telegram.sendMessage(OWNER_TELEGRAM_ID, `📲 *Code de jumelage WhatsApp :*\n\`\`\`${pairingCode}\`\`\``, {
-        parse_mode: "Markdown"
-      });
-    }
-  });
-
-  // Commande .menu sur WhatsApp
-  sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    const msg = messages[0];
-    if (!msg.message || msg.key.fromMe) return;
-    const from = msg.key.remoteJid;
-    const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
+  // 📥 Reponn a .menu sou WhatsApp
+  sock.ev.on('messages.upsert', async ({ messages }) => {
+    const m = messages[0];
+    if (!m.message || m.key.fromMe) return;
+    const text = m.message.conversation || m.message.extendedTextMessage?.text || '';
+    const from = m.key.remoteJid;
 
     if (text === '.menu') {
-      const menuFr = `╔══🔰 *MENU DEXBOT XMD* 🔰══
-║
-║ 📌 *Commandes Principales:*
-║ ⤷ .menu
-║ ⤷ .help
-║ ⤷ .gpt
-║ ⤷ .play
-║
-║ 👮 *Commandes Groupe:*
-║ ⤷ .tagall
-║ ⤷ .hidetag
-║ ⤷ .kick
-║ ⤷ .promote
-║ ⤷ .demote
-║
-║ 🎵 *Média:*
-║ ⤷ .yt
-║ ⤷ .mp3
-║ ⤷ .image
-║
-╚═════════════════╝`;
-
-      await sock.sendMessage(from, { text: menuFr });
+      await sock.sendMessage(from, {
+        image: { url: 'https://telegra.ph/file/93c63a213f75f53608ddc.jpg' },
+        caption:
+`╭──〔 *📱 DEXBOT XMD - MENU* 〕──⬣
+│
+│✨ *MENU PRINCIPAL*
+│• .menu
+│• .ping
+│• .owner
+│
+│👥 *MENU GROUPES*
+│• .hidetag
+│• .tagall
+│• .promote
+│• .demote
+│• .kick
+│• .antilink
+│• .antistickers
+│
+│🤖 *MENU IA*
+│• .chatgpt Bonjour le monde
+│• .play Bonjour
+│
+│🔎 *MENU RECHERCHE*
+│• .yt nom_video
+│• .image mot_clé
+│
+╰─────────────⬣`
+      });
     }
   });
 }
 
-// 🔹 Menu stylé Telegram
+// 🚀 Telegram Menu Stylé
 bot.start((ctx) => {
-  ctx.reply(`🔹 *DEXBOT V1*
-
-🤖 Bienvenue sur le bot officiel DEXBOT XMD !
-
-🧩 Commandes disponibles :
-
-📌 /connect - Lancer jumelage WhatsApp
-❌ /delconnect - Supprimer la session WhatsApp
-🔥 /DexCrash 509xxxxx
-💀 /DexKill 509xxxxx
-`, { parse_mode: "Markdown" });
+  ctx.reply(
+    `🔹 *DEXBOT V1*\n\n` +
+    `/connect 509XXXXXX\n` +
+    `/delconnect 509XXXXXX\n\n` +
+    `🔸 *PREM-MENU*\n` +
+    `/DexCrash 509XXXXXX\n` +
+    `/DexKill 509XXXXXX`,
+    { parse_mode: 'Markdown' }
+  );
 });
 
-// 🔸 Lancer jumelage WhatsApp via /connect
-const OWNER_TELEGRAM_ID = 8115416221; // Remplace par ton ID
-bot.command('connect', async (ctx) => {
-  if (ctx.from.id !== OWNER_TELEGRAM_ID) return ctx.reply('🚫 Accès refusé.');
-  ctx.reply('⏳ Connexion à WhatsApp en cours...');
-  startWA();
+bot.command('menu', (ctx) => {
+  ctx.reply(
+    `╭──〔 *🤖 MENU TELEGRAM - DEXBOT* 〕───⬣
+│
+│/connect 509XXXXXX
+│/delconnect 509XXXXXX
+│
+│🔸 *PREM-MENU*:
+│/DexCrash 509XXXXXX
+│/DexKill 509XXXXXX
+╰─────────────⬣`, { parse_mode: 'Markdown' }
+  );
 });
 
-// 🔸 Supprimer auth WhatsApp
-bot.command('delconnect', async (ctx) => {
-  if (ctx.from.id !== OWNER_TELEGRAM_ID) return ctx.reply('🚫 Accès refusé.');
-  try {
-    await fs.remove(WA_SESS);
-    ctx.reply('✅ Session WhatsApp supprimée.');
-  } catch {
-    ctx.reply('❌ Impossible de supprimer la session.');
-  }
-});
-
-// 🚀 Lancer le bot Telegram
-bot.launch().then(() => {
-  console.log('✅ Bot Telegram lancé !');
-})
+// 🟢 Lanse Tou
+startWhatsapp().catch(console.error);
+bot.launch().then(() => console.log('🤖 BOT TELEGRAM AK WHATSAPP LIVE!'))
