@@ -1,4 +1,4 @@
 // config.js
 module.exports = {
-  TELEGRAM_TOKEN: "VOTRE_TOKEN_ICI"
+  TELEGRAM_TOKEN: "7847312207:AAE3a0LEeZ-AiQRbnVpq7CjUpUaPVYDnjzM"
 }
